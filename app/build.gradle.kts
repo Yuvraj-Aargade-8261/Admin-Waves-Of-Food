@@ -63,6 +63,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation(libs.firebase.storage)
     implementation ("com.github.bumptech.glide:glide:4.16.0")
+    implementation(libs.firebase.messaging)
 
     // Optional: Credential API - REMOVED due to preview SDK requirement
     // implementation("androidx.credentials:credentials:1.2.0-alpha02")
