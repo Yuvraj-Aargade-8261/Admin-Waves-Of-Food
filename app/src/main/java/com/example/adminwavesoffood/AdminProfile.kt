@@ -25,7 +25,7 @@ class AdminProfile : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-        adminReference = database.reference.child("user")
+        adminReference = database.reference.child("Hotel Users")
 
         disableEditing()
 

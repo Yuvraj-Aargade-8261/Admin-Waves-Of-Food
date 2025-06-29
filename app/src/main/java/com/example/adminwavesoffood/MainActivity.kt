@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.example.adminwavesoffood.databinding.ActivityMainBinding
-import com.example.adminwavesoffood.model.OrderDetailes
+import com.example.adminwavesoffood.model.OrderDetails
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
@@ -18,6 +18,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var database: FirebaseDatabase
     private lateinit var auth: FirebaseAuth
     private lateinit var completedOrderReference: DatabaseReference
+    private lateinit var pendingOrderReference: DatabaseReference
+    private lateinit var hotelUserId: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +28,17 @@ class MainActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-        completedOrderReference = database.reference.child("CompletedOrder")
+        hotelUserId = auth.currentUser?.uid ?: return
+
+        completedOrderReference = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
+            .child("CompletedOrder")
+
+        pendingOrderReference = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
+            .child("OrderDetails")
 
         setupNavigation()
         fetchDashboardData()
@@ -59,7 +71,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.logout.setOnClickListener {
             auth.signOut()
-            startActivity(Intent(this, SignUpActivity::class.java))
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
     }
@@ -77,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 listOfTotalPay.clear()
                 for (orderSnapshot in snapshot.children) {
-                    val order = orderSnapshot.getValue(OrderDetailes::class.java)
+                    val order = orderSnapshot.getValue(OrderDetails::class.java)
                     order?.totalPrices?.replace(" ₹", "")?.toIntOrNull()?.let {
                         listOfTotalPay.add(it)
                     }
@@ -90,8 +102,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getPendingOrders() {
-        val pendingRef = database.reference.child("orderDetails")
-        pendingRef.addValueEventListener(object : ValueEventListener {
+        pendingOrderReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 binding.number.text = snapshot.childrenCount.toString()
             }

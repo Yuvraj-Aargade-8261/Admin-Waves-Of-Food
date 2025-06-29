@@ -80,6 +80,6 @@ class SignUpActivity : AppCompatActivity() {
     private fun saveUserData(userName: String, restaurant: String, email: String, password: String) {
         val userId = auth.currentUser?.uid ?: return
         val user = UserModel(userName, restaurant, email, password)
-        database.child("user").child(userId).setValue(user)
+        database.child("Hotel Users").child(userId).setValue(user)
     }
 }

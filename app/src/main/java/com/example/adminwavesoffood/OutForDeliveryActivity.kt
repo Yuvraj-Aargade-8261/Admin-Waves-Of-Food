@@ -7,41 +7,46 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.DeliveryAdapter
 import com.example.adminwavesoffood.databinding.ActivityOutForDeliveryBinding
-import com.example.adminwavesoffood.model.OrderDetailes
+import com.example.adminwavesoffood.model.OrderDetails
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
 class OutForDeliveryActivity : AppCompatActivity() {
 
-    private val binding: ActivityOutForDeliveryBinding by lazy {
-        ActivityOutForDeliveryBinding.inflate(layoutInflater)
-    }
-
+    private lateinit var binding: ActivityOutForDeliveryBinding
     private lateinit var database: FirebaseDatabase
-    private val completedOrdersList: ArrayList<OrderDetailes> = arrayListOf()
+    private lateinit var auth: FirebaseAuth
+    private val completedOrdersList = arrayListOf<OrderDetails>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        binding = ActivityOutForDeliveryBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance()
 
         retrieveCompletedOrders()
     }
 
     private fun retrieveCompletedOrders() {
-        database = FirebaseDatabase.getInstance()
+        val hotelUserId = auth.currentUser?.uid ?: return
         val completedRef = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
             .child("CompletedOrder")
             .orderByChild("currentTime")
 
-        completedRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        completedRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 completedOrdersList.clear()
                 for (orderSnapshot in snapshot.children) {
-                    val order = orderSnapshot.getValue(OrderDetailes::class.java)
+                    val order = orderSnapshot.getValue(OrderDetails::class.java)
                     order?.let { completedOrdersList.add(it) }
                 }
 
-                completedOrdersList.reverse() // ✅ To show latest first
+                completedOrdersList.reverse() // Show latest first
                 setDataIntoRecyclerView()
             }
 
@@ -56,12 +61,11 @@ class OutForDeliveryActivity : AppCompatActivity() {
         val moneyStatuses = mutableListOf<Boolean>()
 
         for (order in completedOrdersList) {
-            order.userNames?.let { customerNames.add(it) }
+            customerNames.add(order.userNames ?: "Unknown")
             moneyStatuses.add(order.paymentReceived)
         }
 
         binding.outforrecycler.layoutManager = LinearLayoutManager(this)
-        val adapter = DeliveryAdapter(customerNames, moneyStatuses)
-        binding.outforrecycler.adapter = adapter
+        binding.outforrecycler.adapter = DeliveryAdapter(customerNames, moneyStatuses)
     }
 }

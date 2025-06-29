@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.MenuItemAdapter
 import com.example.adminwavesoffood.databinding.ActivityAllItemBinding
 import com.example.adminwavesoffood.model.AllMenu
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
 class AllItemActivity : AppCompatActivity() {
@@ -21,11 +22,14 @@ class AllItemActivity : AppCompatActivity() {
         ActivityAllItemBinding.inflate(layoutInflater)
     }
 
+    private lateinit var auth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
 
+        auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
         databaseReference = database.reference
 
@@ -33,7 +37,11 @@ class AllItemActivity : AppCompatActivity() {
     }
 
     private fun retrieveMenuItems() {
-        val foodRef = database.reference.child("menu")
+        val currentUserId = auth.currentUser?.uid ?: return
+        val foodRef = database.reference
+            .child("Hotel Users")
+            .child(currentUserId)
+            .child("menu")
 
         foodRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -61,17 +69,24 @@ class AllItemActivity : AppCompatActivity() {
     }
 
     private fun deleteMenuItem(position: Int) {
+        val currentUserId = auth.currentUser?.uid ?: return
         val item = menuItems[position]
         val key = item.itemKey ?: return
 
-        database.reference.child("menu").child(key).removeValue().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                menuItems.removeAt(position)
-                binding.menurecyclerview.adapter?.notifyItemRemoved(position)
-                binding.menurecyclerview.adapter?.notifyItemRangeChanged(position, menuItems.size)
-            } else {
-                Toast.makeText(this, "Item Not Deleted", Toast.LENGTH_SHORT).show()
+        database.reference
+            .child("Hotel Users")
+            .child(currentUserId)
+            .child("menu")
+            .child(key)
+            .removeValue()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    menuItems.removeAt(position)
+                    binding.menurecyclerview.adapter?.notifyItemRemoved(position)
+                    binding.menurecyclerview.adapter?.notifyItemRangeChanged(position, menuItems.size)
+                } else {
+                    Toast.makeText(this, "Item Not Deleted", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
     }
 }

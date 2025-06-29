@@ -3,17 +3,17 @@ package com.example.adminwavesoffood.adapter
 import android.content.Context
 import android.net.Uri
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.adminwavesoffood.databinding.PendingitemBinding
+import com.example.adminwavesoffood.model.OrderDetails
 
 class PendingOrderAdapter(
     private val context: Context,
-    private val customerNames: MutableList<String>,
-    private val quantities: MutableList<String>,
-    private val foodImages: MutableList<String>,
+    private val orderList: List<OrderDetails>,
     private val itemClicked: OnItemClicked
 ) : RecyclerView.Adapter<PendingOrderAdapter.PendingViewHolder>() {
 
@@ -32,47 +32,43 @@ class PendingOrderAdapter(
         holder.bind(position)
     }
 
-    override fun getItemCount(): Int = customerNames.size
+    override fun getItemCount(): Int = orderList.size
 
     inner class PendingViewHolder(private val binding: PendingitemBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        private var isAccepted = false
-
         fun bind(position: Int) {
-            if (position >= customerNames.size) return
+            val order = orderList[position]
 
-            binding.apply {
-                customernamepending2.text = customerNames[position]
-                pendingorderquantity.text = quantities[position]
-                Glide.with(context).load(Uri.parse(foodImages[position])).into(orderfooditemimage)
+            binding.customernamepending2.text = order.userNames ?: "Unnamed"
+            binding.pendingorderquantity.text = order.foodPrices?.firstOrNull() ?: "0"
+            Glide.with(context)
+                .load(Uri.parse(order.foodImages?.firstOrNull()))
+                .into(binding.orderfooditemimage)
 
-                acceptbutton.text = if (isAccepted) "Dispatch" else "Accept"
+            if (order.orderAccepted == true) {
+                binding.acceptbutton.text = "Dispatch"
+            } else {
+                binding.acceptbutton.text = "Accept"
+            }
 
-                acceptbutton.setOnClickListener {
-                    val pos = adapterPosition
-                    if (pos != RecyclerView.NO_POSITION) {
-                        if (!isAccepted) {
-                            isAccepted = true
-                            acceptbutton.text = "Dispatch"
-                            showToast("Order is Accepted")
-                            itemClicked.onItemAcceptClickListener(pos)
-                        } else {
-                            customerNames.removeAt(pos)
-                            quantities.removeAt(pos)
-                            foodImages.removeAt(pos)
-                            notifyItemRemoved(pos)
-                            showToast("Order is Dispatched")
-                            itemClicked.onItemDispatchClickListener(pos)
-                        }
+            binding.acceptbutton.setOnClickListener {
+                val pos = adapterPosition
+                if (pos != RecyclerView.NO_POSITION) {
+                    if (order.orderAccepted == true) {
+                        itemClicked.onItemDispatchClickListener(pos)
+                        showToast("Order is Dispatched")
+                    } else {
+                        itemClicked.onItemAcceptClickListener(pos)
+                        showToast("Order is Accepted")
                     }
                 }
+            }
 
-                itemView.setOnClickListener {
-                    val pos = adapterPosition
-                    if (pos != RecyclerView.NO_POSITION) {
-                        itemClicked.onItemClickListener(pos)
-                    }
+            itemView.setOnClickListener {
+                val pos = adapterPosition
+                if (pos != RecyclerView.NO_POSITION) {
+                    itemClicked.onItemClickListener(pos)
                 }
             }
         }

@@ -9,19 +9,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.PendingOrderAdapter
 import com.example.adminwavesoffood.databinding.ActivityPendingOrderBinding
-import com.example.adminwavesoffood.model.OrderDetailes
+import com.example.adminwavesoffood.model.OrderDetails
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
 class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClicked {
 
     private lateinit var binding: ActivityPendingOrderBinding
-    private val orderList = arrayListOf<OrderDetailes>()
-    private val names = mutableListOf<String>()
-    private val prices = mutableListOf<String>()
-    private val firstImages = mutableListOf<String>()
+    private val orderList = arrayListOf<OrderDetails>()
 
     private lateinit var database: FirebaseDatabase
     private lateinit var ordersRef: DatabaseReference
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,8 +28,11 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         binding = ActivityPendingOrderBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-        ordersRef = database.reference.child("orderDetails")
+
+        val hotelUserId = auth.currentUser?.uid ?: return
+        ordersRef = database.reference.child("Hotel Users").child(hotelUserId).child("OrderDetails")
 
         fetchLiveOrders()
     }
@@ -39,21 +41,15 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         ordersRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 orderList.clear()
-                names.clear()
-                prices.clear()
-                firstImages.clear()
 
                 for (snap in snapshot.children) {
-                    val order = snap.getValue(OrderDetailes::class.java)
-                    order?.let {
-                        orderList.add(it)
-                        names.add(it.userNames ?: "Unnamed")
-                        prices.add(it.totalPrices ?: "0")
-                        firstImages.add(it.foodImages?.firstOrNull() ?: "")
+                    val order = snap.getValue(OrderDetails::class.java)
+                    if (order != null) {
+                        orderList.add(order)
                     }
                 }
 
-                Log.d("FirebaseDebug", "Orders: ${orderList.size}")
+                Log.d("FirebaseDebug", "Hotel Orders: ${orderList.size}")
                 setupAdapter()
             }
 
@@ -67,9 +63,7 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         binding.pendinforderrecycler.layoutManager = LinearLayoutManager(this)
         binding.pendinforderrecycler.adapter = PendingOrderAdapter(
             context = this,
-            customerNames = names,
-            quantities = prices,
-            foodImages = firstImages,
+            orderList = orderList,
             itemClicked = this
         )
     }
@@ -82,35 +76,38 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
     override fun onItemAcceptClickListener(position: Int) {
         val order = orderList[position]
+        val hotelUserId = auth.currentUser?.uid ?: return
         val pushKey = order.itemPushkey ?: return
-        val userId = order.userId ?: return
 
-        val orderRef = database.reference.child("orderDetails").child(pushKey)
-        val userHistoryRef = database.reference
-            .child("user")
-            .child(userId)
-            .child("BuyHistory")
-            .child(pushKey)
+        val hotelRef = database.reference
+            .child("Hotel Users").child(hotelUserId)
+            .child("OrderDetails").child(pushKey)
 
-        orderRef.child("orderAccepted").setValue(true)
-        userHistoryRef.child("orderAccepted").setValue(true)
+        hotelRef.child("orderAccepted").setValue(true)
     }
 
     override fun onItemDispatchClickListener(position: Int) {
         val order = orderList[position]
+        val hotelUserId = auth.currentUser?.uid ?: return
         val pushKey = order.itemPushkey ?: return
 
-        val completedRef = database.reference.child("CompletedOrder").child(pushKey)
+        // ✅ Save to Hotel Users/{hotelUserId}/CompletedOrder
+        val completedRef = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
+            .child("CompletedOrder")
+            .child(pushKey)
+
         completedRef.setValue(order)
             .addOnSuccessListener {
-                removeOrderFromPending(pushKey)
-            }
-    }
+                // ✅ Remove from Hotel Users/{hotelUserId}/OrderDetails
+                database.reference
+                    .child("Hotel Users")
+                    .child(hotelUserId)
+                    .child("OrderDetails")
+                    .child(pushKey)
+                    .removeValue()
 
-    private fun removeOrderFromPending(pushKey: String) {
-        database.reference.child("orderDetails").child(pushKey)
-            .removeValue()
-            .addOnSuccessListener {
                 Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {

@@ -73,7 +73,7 @@ class AddItemActivity : AppCompatActivity() {
             val config = hashMapOf(
                 "cloud_name" to "dx2z14jhc",
                 "api_key" to "514881693863474",
-                "api_secret" to "w2GQaDpgcbWKzkilRN1S5JmH8zY", // ⚠ Do not expose in production
+                "api_secret" to "w2GQaDpgcbWKzkilRN1S5JmH8zY", // ⚠ Don't expose in prod
                 "upload_preset" to "wavesoffood",
                 "secure" to "true"
             )
@@ -108,7 +108,10 @@ class AddItemActivity : AppCompatActivity() {
     }
 
     private fun uploadDataToFirebase(imageUrl: String) {
-        val menuRef = database.getReference("menu")
+        val currentUserId = auth.currentUser?.uid ?: return
+        val menuRef = database.getReference("Hotel Users")
+            .child(currentUserId)
+            .child("menu")
         val newItemKey = menuRef.push().key
 
         val newItem = AllMenu(

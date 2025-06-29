@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.OrderDetailesAdapter
 import com.example.adminwavesoffood.databinding.ActivityOrderDetailesAactivityBinding
-import com.example.adminwavesoffood.model.OrderDetailes
+import com.example.adminwavesoffood.model.OrderDetails
 
 class OrderDetailesAActivity : AppCompatActivity() {
 
@@ -34,7 +34,7 @@ class OrderDetailesAActivity : AppCompatActivity() {
     }
 
     private fun getOrderDataFromIntent() {
-        val orderDetailes = intent.getSerializableExtra("userOrderDetailes") as? OrderDetailes
+        val orderDetailes = intent.getSerializableExtra("userOrderDetailes") as? OrderDetails
         if (orderDetailes != null) {
             userName = orderDetailes.userNames
             address = orderDetailes.address

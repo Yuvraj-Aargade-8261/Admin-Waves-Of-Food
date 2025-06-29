@@ -2,7 +2,7 @@ package com.example.adminwavesoffood.model
 
 import java.io.Serializable
 
-class OrderDetailes : Serializable {
+class OrderDetails : Serializable {
     var userId: String? = null
     var userNames: String? = null
     var foodNames: MutableList<String> = mutableListOf()
