@@ -50,10 +50,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:fontFamily="@font/yeonsung_regular"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/lato_regular"
                 android:text="Spacy fresh crab"
                 android:textColor="@color/black"
                 android:textSize="16sp"
+                android:textStyle="bold"
                 app:layout_constraintStart_toEndOf="@+id/cardView9"
                 app:layout_constraintTop_toTopOf="@+id/cardView9" />
 
@@ -61,11 +63,11 @@
                 android:id="@+id/foodmenuprice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/yeonsung_regular"
+                android:layout_marginStart="16dp"
+                android:fontFamily="@font/lato_extra_bold"
                 android:text="$35"
                 android:textColor="@color/green"
                 android:textSize="20sp"
-                android:layout_marginStart="16dp"
                 app:layout_constraintBottom_toBottomOf="@+id/cardView9"
                 app:layout_constraintStart_toEndOf="@+id/cardView9" />
 
@@ -73,7 +75,7 @@
                 android:id="@+id/minusbutton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="20dp"
+                android:layout_marginEnd="10dp"
                 android:background="@android:color/transparent"
                 android:src="@drawable/icon_minus"
                 app:layout_constraintBottom_toBottomOf="@+id/quantitytextview"

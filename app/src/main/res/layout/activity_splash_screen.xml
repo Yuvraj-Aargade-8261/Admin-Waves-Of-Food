@@ -41,7 +41,7 @@
         android:fontFamily="@font/yeonsung_regular"
         android:text="Admin Dashboard"
         android:textColor="@color/green"
-        android:textSize="18sp"
+        android:textSize="20sp"
 
         app:layout_constraintEnd_toEndOf="@+id/textView"
         app:layout_constraintStart_toStartOf="@+id/textView"

@@ -10,14 +10,14 @@ import com.example.adminwavesoffood.databinding.OrderdetailesitemsBinding
 
 class OrderDetailesAdapter(
     private val context: Context,
-    private val foodNames: ArrayList<String>,
-    private val foodImages: ArrayList<String>,
-    private val foodQuantities: ArrayList<Int>,
-    private val foodPrices: ArrayList<String>
+    private val foodNames: List<String>,
+    private val foodImages: List<String>,
+    private val foodQuantities: List<Int>,
+    private val foodPrices: List<String>
 ) : RecyclerView.Adapter<OrderDetailesAdapter.OrderDetailesViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OrderDetailesViewHolder {
-        val binding = OrderdetailesitemsBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = OrderdetailesitemsBinding.inflate(LayoutInflater.from(context), parent, false)
         return OrderDetailesViewHolder(binding)
     }
 
@@ -31,15 +31,27 @@ class OrderDetailesAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(position: Int) {
-            val priceValue = foodPrices[position].toIntOrNull()
-            val formattedPrice = priceValue?.let { "₹ ${String.format("%,d", it)}" }
-                ?: "₹ ${foodPrices[position]}"
+            val name = foodNames.getOrNull(position) ?: "Item"
+            val quantity = foodQuantities.getOrNull(position)?.toString() ?: "0"
+            val imageUrl = foodImages.getOrNull(position)
+            val priceStr = foodPrices.getOrNull(position) ?: "0"
+
+            val formattedPrice = priceStr.toIntOrNull()?.let {
+                "₹ ${String.format("%,d", it)}"
+            } ?: "₹ $priceStr"
 
             binding.apply {
-                customernameorderdetailes.text = foodNames[position]
-                orderdetailesquantitiyy.text = foodQuantities[position].toString()
+                customernameorderdetailes.text = name
+                orderdetailesquantitiyy.text = quantity
                 orderdetailesprices.text = formattedPrice
-                Glide.with(context).load(Uri.parse(foodImages[position])).into(orderdetailesfoodimage)
+
+                if (!imageUrl.isNullOrBlank()) {
+                    Glide.with(context)
+                        .load(Uri.parse(imageUrl))
+                        .into(orderdetailesfoodimage)
+                } else {
+                    orderdetailesfoodimage.setImageResource(android.R.color.darker_gray)
+                }
             }
         }
     }

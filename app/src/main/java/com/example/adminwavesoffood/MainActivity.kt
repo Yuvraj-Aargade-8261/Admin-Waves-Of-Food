@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
+        // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
         hotelUserId = auth.currentUser?.uid ?: return
@@ -69,6 +70,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, PendingOrderActivity::class.java))
         }
 
+        binding.completedorderlist.setOnClickListener {
+            startActivity(Intent(this, CompletedOrderActivity::class.java))
+        }
+
         binding.logout.setOnClickListener {
             auth.signOut()
             startActivity(Intent(this, LoginActivity::class.java))
@@ -80,25 +85,6 @@ class MainActivity : AppCompatActivity() {
         getPendingOrders()
         getCompletedOrders()
         getTotalEarnings()
-    }
-
-    private fun getTotalEarnings() {
-        val listOfTotalPay = mutableListOf<Int>()
-
-        completedOrderReference.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                listOfTotalPay.clear()
-                for (orderSnapshot in snapshot.children) {
-                    val order = orderSnapshot.getValue(OrderDetails::class.java)
-                    order?.totalPrices?.replace(" ₹", "")?.toIntOrNull()?.let {
-                        listOfTotalPay.add(it)
-                    }
-                }
-                binding.earning.text = "${listOfTotalPay.sum()} ₹"
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
     }
 
     private fun getPendingOrders() {
@@ -115,6 +101,24 @@ class MainActivity : AppCompatActivity() {
         completedOrderReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 binding.completenumber.text = snapshot.childrenCount.toString()
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun getTotalEarnings() {
+        completedOrderReference.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var total = 0
+                for (orderSnapshot in snapshot.children) {
+                    val order = orderSnapshot.getValue(OrderDetails::class.java)
+                    val price = order?.totalPrices?.replace("[^0-9]".toRegex(), "")?.toIntOrNull()
+                    if (price != null) {
+                        total += price
+                    }
+                }
+                binding.earning.text = "$total ₹"
             }
 
             override fun onCancelled(error: DatabaseError) {}

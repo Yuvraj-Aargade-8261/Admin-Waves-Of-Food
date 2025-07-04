@@ -41,7 +41,7 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/createbuttonsignup"
-        android:layout_width="152dp"
+        android:layout_width="162dp"
         android:layout_height="57dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/greenbutton"

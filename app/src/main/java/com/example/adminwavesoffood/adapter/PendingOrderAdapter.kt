@@ -3,7 +3,6 @@ package com.example.adminwavesoffood.adapter
 import android.content.Context
 import android.net.Uri
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
@@ -40,18 +39,21 @@ class PendingOrderAdapter(
         fun bind(position: Int) {
             val order = orderList[position]
 
+            // ✅ Set customer name
             binding.customernamepending2.text = order.userNames ?: "Unnamed"
-            binding.pendingorderquantity.text = order.foodPrices?.firstOrNull() ?: "0"
+
+            // ✅ Display total quantity (sum of all items)
+            binding.pendingorderquantity.text = order.foodQuantities?.sum()?.toString() ?: "0"
+
+            // ✅ Load image with Glide
             Glide.with(context)
                 .load(Uri.parse(order.foodImages?.firstOrNull()))
                 .into(binding.orderfooditemimage)
 
-            if (order.orderAccepted == true) {
-                binding.acceptbutton.text = "Dispatch"
-            } else {
-                binding.acceptbutton.text = "Accept"
-            }
+            // ✅ Update button text based on orderAccepted flag
+            binding.acceptbutton.text = if (order.orderAccepted == true) "Dispatch" else "Accept"
 
+            // ✅ Accept/Dispatch button logic
             binding.acceptbutton.setOnClickListener {
                 val pos = adapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
@@ -65,6 +67,7 @@ class PendingOrderAdapter(
                 }
             }
 
+            // ✅ Whole card click opens order details
             itemView.setOnClickListener {
                 val pos = adapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
