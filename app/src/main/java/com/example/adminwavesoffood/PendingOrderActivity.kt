@@ -30,7 +30,8 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         database = FirebaseDatabase.getInstance()
 
         val hotelUserId = auth.currentUser?.uid ?: return
-        ordersRef = database.reference.child("Hotel Users").child(hotelUserId).child("OrderDetails")
+        ordersRef = database.reference
+            .child("Hotel Users").child(hotelUserId).child("OrderDetails")
 
         fetchLiveOrders()
     }
@@ -74,32 +75,12 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
         hotelRef.child("orderAccepted").setValue(true)
 
-        // Send notification
-        val hotelNameRef = database.reference.child("Hotel Users").child(hotelUserId).child("nameOfResturant")
-        hotelNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val hotelName = snapshot.getValue(String::class.java) ?: "the hotel"
-                val title = "Order Accepted"
-                val message = "Your order has been accepted by $hotelName"
-                val timestamp = System.currentTimeMillis().toString()
-
-                order.userId?.let { userId ->
-                    val userRef = database.reference
-                        .child("Users").child(userId)
-                        .child("notifications").child(pushKey)
-
-                    val notifyMap = mapOf(
-                        "title" to title,
-                        "message" to message,
-                        "status" to "accepted",
-                        "timestamp" to timestamp
-                    )
-                    userRef.setValue(notifyMap)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        sendNotificationWithHotelName(
+            userId = order.userId ?: return,
+            hotelUserId = hotelUserId,
+            title = "Order Accepted",
+            status = "accepted"
+        )
     }
 
     override fun onItemDispatchClickListener(position: Int) {
@@ -118,33 +99,47 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
             Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
 
-            val hotelNameRef = database.reference.child("Hotel Users").child(hotelUserId).child("nameOfResturant")
-            hotelNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val hotelName = snapshot.getValue(String::class.java) ?: "the hotel"
-                    val title = "Order Dispatched"
-                    val message = "Your order has been dispatched by $hotelName"
-                    val timestamp = System.currentTimeMillis().toString()
-
-                    order.userId?.let { userId ->
-                        val userRef = database.reference
-                            .child("Users").child(userId)
-                            .child("notifications").child(pushKey)
-
-                        val notifyMap = mapOf(
-                            "title" to title,
-                            "message" to message,
-                            "status" to "dispatched",
-                            "timestamp" to timestamp
-                        )
-                        userRef.setValue(notifyMap)
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
+            sendNotificationWithHotelName(
+                userId = order.userId ?: return@addOnSuccessListener,
+                hotelUserId = hotelUserId,
+                title = "Order Dispatched",
+                status = "dispatched"
+            )
         }.addOnFailureListener {
             Toast.makeText(this, "Dispatch Failed", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun sendNotificationWithHotelName(
+        userId: String,
+        hotelUserId: String,
+        title: String,
+        status: String
+    ) {
+        val nameRef = database.reference
+            .child("Hotel Users").child(hotelUserId).child("nameOfResturant")
+
+        nameRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val hotelName = snapshot.getValue(String::class.java) ?: "your hotel"
+                val message = "Your order has been $status by $hotelName"
+                val timestamp = System.currentTimeMillis().toString()
+
+                val notifyMap = mapOf(
+                    "title" to title,
+                    "message" to message,
+                    "status" to status,
+                    "timestamp" to timestamp
+                )
+
+                // ✅ Save in lowercase `notifications`
+                database.reference
+                    .child("Users").child(userId)
+                    .child("notifications").child(timestamp)
+                    .setValue(notifyMap)
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 }
