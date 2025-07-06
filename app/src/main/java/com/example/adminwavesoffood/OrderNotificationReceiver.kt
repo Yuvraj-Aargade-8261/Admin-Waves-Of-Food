@@ -7,20 +7,34 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 
 class OrderNotificationReceiver : BroadcastReceiver() {
+
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) return
 
-        // ✅ Correct key based on database: "userNames"
         val userName = intent.getStringExtra("userNames") ?: "Customer"
+        val orderId = intent.getStringExtra("orderId") ?: System.currentTimeMillis().toString()
+
+        Log.d("OrderNotification", "Received broadcast for order by: $userName")
+
+        val sharedPref = context.getSharedPreferences("OrderNotifications", Context.MODE_PRIVATE)
+        val alreadyNotified = sharedPref.getBoolean(orderId, false)
+
+        if (alreadyNotified) {
+            Log.d("OrderNotification", "Notification already shown for orderId: $orderId")
+            return
+        }
+
+        // Mark this order as notified
+        sharedPref.edit().putBoolean(orderId, true).apply()
 
         val channelId = "order_channel"
         val channelName = "Order Notifications"
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Create notification channel for Android O+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
@@ -32,18 +46,20 @@ class OrderNotificationReceiver : BroadcastReceiver() {
             manager.createNotificationChannel(channel)
         }
 
-        // Intent to open MainActivity when clicked
         val notificationIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
+        val requestCode = orderId.hashCode() // unique per order
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
+            context,
+            requestCode,
+            notificationIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // Build notification
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.baseline_notifications_24) // Replace with actual icon
+            .setSmallIcon(R.drawable.baseline_notifications_24) // ✅ Update this icon as needed
             .setContentTitle("New Order Received!")
             .setContentText("Order placed by $userName")
             .setAutoCancel(true)
@@ -51,7 +67,6 @@ class OrderNotificationReceiver : BroadcastReceiver() {
             .setContentIntent(pendingIntent)
             .build()
 
-        // Show notification
-        manager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
+        manager.notify(requestCode, notification)
     }
 }

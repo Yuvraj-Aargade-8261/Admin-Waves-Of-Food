@@ -1,10 +1,16 @@
 package com.example.adminwavesoffood
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.PendingOrderAdapter
 import com.example.adminwavesoffood.databinding.ActivityPendingOrderBinding
@@ -99,6 +105,10 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
             Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
 
+            // ✅ Show local admin-side notification
+            showLocalDispatchNotification(order)
+
+            // ✅ Send notification to user in Firebase
             sendNotificationWithHotelName(
                 userId = order.userId ?: return@addOnSuccessListener,
                 hotelUserId = hotelUserId,
@@ -132,7 +142,6 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
                     "timestamp" to timestamp
                 )
 
-                // ✅ Save in lowercase `notifications`
                 database.reference
                     .child("Users").child(userId)
                     .child("notifications").child(timestamp)
@@ -141,5 +150,43 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
             override fun onCancelled(error: DatabaseError) {}
         })
+    }
+
+    // 🔔 Show instant local notification to admin
+    private fun showLocalDispatchNotification(order: OrderDetails) {
+        val channelId = "dispatch_channel"
+        val channelName = "Dispatch Notifications"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                channelName,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Admin-side dispatch notifications"
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(this, CompletedOrderActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            order.hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val userName = order.userNames ?: "Customer"
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.baseline_notifications_24) // ✅ Update this icon as needed
+            .setContentTitle("Order Completed")
+            .setContentText("Order from $userName has been completed.")
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        manager.notify(order.hashCode(), notification)
     }
 }
