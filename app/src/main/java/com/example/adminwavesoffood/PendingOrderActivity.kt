@@ -2,7 +2,6 @@ package com.example.adminwavesoffood
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -17,7 +16,6 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
     private lateinit var binding: ActivityPendingOrderBinding
     private val orderList = arrayListOf<OrderDetails>()
-
     private lateinit var database: FirebaseDatabase
     private lateinit var ordersRef: DatabaseReference
     private lateinit var auth: FirebaseAuth
@@ -41,31 +39,22 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         ordersRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 orderList.clear()
-
                 for (snap in snapshot.children) {
                     val order = snap.getValue(OrderDetails::class.java)
                     if (order != null) {
                         orderList.add(order)
                     }
                 }
-
-                Log.d("FirebaseDebug", "Hotel Orders: ${orderList.size}")
                 setupAdapter()
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseDebug", "Error: ${error.message}")
-            }
+            override fun onCancelled(error: DatabaseError) {}
         })
     }
 
     private fun setupAdapter() {
         binding.pendinforderrecycler.layoutManager = LinearLayoutManager(this)
-        binding.pendinforderrecycler.adapter = PendingOrderAdapter(
-            context = this,
-            orderList = orderList,
-            itemClicked = this
-        )
+        binding.pendinforderrecycler.adapter = PendingOrderAdapter(this, orderList, this)
     }
 
     override fun onItemClickListener(position: Int) {
@@ -84,6 +73,33 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
             .child("OrderDetails").child(pushKey)
 
         hotelRef.child("orderAccepted").setValue(true)
+
+        // Send notification
+        val hotelNameRef = database.reference.child("Hotel Users").child(hotelUserId).child("nameOfResturant")
+        hotelNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val hotelName = snapshot.getValue(String::class.java) ?: "the hotel"
+                val title = "Order Accepted"
+                val message = "Your order has been accepted by $hotelName"
+                val timestamp = System.currentTimeMillis().toString()
+
+                order.userId?.let { userId ->
+                    val userRef = database.reference
+                        .child("Users").child(userId)
+                        .child("notifications").child(pushKey)
+
+                    val notifyMap = mapOf(
+                        "title" to title,
+                        "message" to message,
+                        "status" to "accepted",
+                        "timestamp" to timestamp
+                    )
+                    userRef.setValue(notifyMap)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
     override fun onItemDispatchClickListener(position: Int) {
@@ -91,27 +107,44 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         val hotelUserId = auth.currentUser?.uid ?: return
         val pushKey = order.itemPushkey ?: return
 
-        // ✅ Save to Hotel Users/{hotelUserId}/CompletedOrder
         val completedRef = database.reference
-            .child("Hotel Users")
-            .child(hotelUserId)
-            .child("CompletedOrder")
-            .child(pushKey)
+            .child("Hotel Users").child(hotelUserId)
+            .child("CompletedOrder").child(pushKey)
 
-        completedRef.setValue(order)
-            .addOnSuccessListener {
-                // ✅ Remove from Hotel Users/{hotelUserId}/OrderDetails
-                database.reference
-                    .child("Hotel Users")
-                    .child(hotelUserId)
-                    .child("OrderDetails")
-                    .child(pushKey)
-                    .removeValue()
+        completedRef.setValue(order).addOnSuccessListener {
+            database.reference.child("Hotel Users")
+                .child(hotelUserId).child("OrderDetails")
+                .child(pushKey).removeValue()
 
-                Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Dispatch Failed", Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
+
+            val hotelNameRef = database.reference.child("Hotel Users").child(hotelUserId).child("nameOfResturant")
+            hotelNameRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val hotelName = snapshot.getValue(String::class.java) ?: "the hotel"
+                    val title = "Order Dispatched"
+                    val message = "Your order has been dispatched by $hotelName"
+                    val timestamp = System.currentTimeMillis().toString()
+
+                    order.userId?.let { userId ->
+                        val userRef = database.reference
+                            .child("Users").child(userId)
+                            .child("notifications").child(pushKey)
+
+                        val notifyMap = mapOf(
+                            "title" to title,
+                            "message" to message,
+                            "status" to "dispatched",
+                            "timestamp" to timestamp
+                        )
+                        userRef.setValue(notifyMap)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
+        }.addOnFailureListener {
+            Toast.makeText(this, "Dispatch Failed", Toast.LENGTH_SHORT).show()
+        }
     }
 }

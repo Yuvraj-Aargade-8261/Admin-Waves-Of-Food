@@ -1,9 +1,14 @@
 package com.example.adminwavesoffood
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.adminwavesoffood.adapter.DeliveryAdapter
 import com.example.adminwavesoffood.databinding.ActivityOutForDeliveryBinding
@@ -28,6 +33,7 @@ class OutForDeliveryActivity : AppCompatActivity() {
         database = FirebaseDatabase.getInstance()
 
         retrieveCompletedOrders()
+        listenForPaymentNotifications() // ✅ NEW
     }
 
     private fun retrieveCompletedOrders() {
@@ -46,7 +52,7 @@ class OutForDeliveryActivity : AppCompatActivity() {
                     order?.let { completedOrdersList.add(it) }
                 }
 
-                completedOrdersList.reverse() // Show latest first
+                completedOrdersList.reverse()
                 setDataIntoRecyclerView()
             }
 
@@ -67,5 +73,58 @@ class OutForDeliveryActivity : AppCompatActivity() {
 
         binding.outforrecycler.layoutManager = LinearLayoutManager(this)
         binding.outforrecycler.adapter = DeliveryAdapter(customerNames, moneyStatuses)
+    }
+
+    // ✅ NEW: Listen to "notifications" node under Hotel Users
+    private fun listenForPaymentNotifications() {
+        val hotelUserId = auth.currentUser?.uid ?: return
+
+        val notificationsRef = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
+            .child("notifications")
+
+        notificationsRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val title = snapshot.child("title").getValue(String::class.java) ?: "Update"
+                val message = snapshot.child("message").getValue(String::class.java) ?: return
+
+                showLocalNotification(title, message)
+
+                // Remove the notification after showing
+                snapshot.ref.removeValue()
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun showLocalNotification(title: String, message: String) {
+        val channelId = "admin_updates"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Admin Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Payment and order updates"
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.baseline_notifications_24)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        manager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }

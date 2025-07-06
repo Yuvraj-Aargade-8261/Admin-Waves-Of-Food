@@ -20,13 +20,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var completedOrderReference: DatabaseReference
     private lateinit var pendingOrderReference: DatabaseReference
     private lateinit var hotelUserId: String
+    private var seenOrderIds = mutableSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
         hotelUserId = auth.currentUser?.uid ?: return
@@ -43,37 +43,31 @@ class MainActivity : AppCompatActivity() {
 
         setupNavigation()
         fetchDashboardData()
+        listenForNewOrders()
     }
 
     private fun setupNavigation() {
         binding.addmenu.setOnClickListener {
             startActivity(Intent(this, AddItemActivity::class.java))
         }
-
         binding.allitemmenu.setOnClickListener {
             startActivity(Intent(this, AllItemActivity::class.java))
         }
-
         binding.outfordeleiverycardbutton.setOnClickListener {
             startActivity(Intent(this, OutForDeliveryActivity::class.java))
         }
-
         binding.profilemaincard.setOnClickListener {
             startActivity(Intent(this, AdminProfile::class.java))
         }
-
         binding.createusermain.setOnClickListener {
             startActivity(Intent(this, CreateUSerActivity::class.java))
         }
-
         binding.pendingordermaintextview.setOnClickListener {
             startActivity(Intent(this, PendingOrderActivity::class.java))
         }
-
         binding.completedorderlist.setOnClickListener {
             startActivity(Intent(this, CompletedOrderActivity::class.java))
         }
-
         binding.logout.setOnClickListener {
             auth.signOut()
             startActivity(Intent(this, LoginActivity::class.java))
@@ -123,5 +117,40 @@ class MainActivity : AppCompatActivity() {
 
             override fun onCancelled(error: DatabaseError) {}
         })
+    }
+
+    private fun listenForNewOrders() {
+        pendingOrderReference.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val orderId = snapshot.key ?: return
+                if (seenOrderIds.contains(orderId)) return
+
+                seenOrderIds.add(orderId)
+                // ✅ Fix: Correct key name based on your database (userNames)
+                val userName = snapshot.child("userNames").getValue(String::class.java) ?: "Customer"
+
+                triggerLocalNotification(userName)
+                refreshDashboardImmediately()
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun refreshDashboardImmediately() {
+        // Re-fetch values for quick update
+        getPendingOrders()
+        getCompletedOrders()
+        getTotalEarnings()
+    }
+
+    private fun triggerLocalNotification(userName: String) {
+        val intent = Intent(this, OrderNotificationReceiver::class.java).apply {
+            putExtra("userNames", userName) // ✅ Match key with BroadcastReceiver
+        }
+        sendBroadcast(intent)
     }
 }
