@@ -1,9 +1,14 @@
 package com.example.adminwavesoffood
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import com.example.adminwavesoffood.databinding.ActivityMainBinding
 import com.example.adminwavesoffood.model.OrderDetails
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pendingOrderReference: DatabaseReference
     private lateinit var hotelUserId: String
     private var seenOrderIds = mutableSetOf<String>()
+    private var seenNotificationIds = mutableSetOf<String>() // ✅ For payment notification tracking
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
         fetchDashboardData()
         listenForNewOrders()
+        listenForPaymentNotifications() // ✅ Moved here
     }
 
     private fun setupNavigation() {
@@ -126,7 +133,6 @@ class MainActivity : AppCompatActivity() {
                 if (seenOrderIds.contains(orderId)) return
 
                 seenOrderIds.add(orderId)
-                // ✅ Fix: Correct key name based on your database (userNames)
                 val userName = snapshot.child("userNames").getValue(String::class.java) ?: "Customer"
 
                 triggerLocalNotification(userName)
@@ -141,7 +147,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshDashboardImmediately() {
-        // Re-fetch values for quick update
         getPendingOrders()
         getCompletedOrders()
         getTotalEarnings()
@@ -149,8 +154,61 @@ class MainActivity : AppCompatActivity() {
 
     private fun triggerLocalNotification(userName: String) {
         val intent = Intent(this, OrderNotificationReceiver::class.java).apply {
-            putExtra("userNames", userName) // ✅ Match key with BroadcastReceiver
+            putExtra("userNames", userName)
         }
         sendBroadcast(intent)
+    }
+
+    // ✅ PAYMENT NOTIFICATION LISTENER
+    private fun listenForPaymentNotifications() {
+        val notificationsRef = database.reference
+            .child("Hotel Users")
+            .child(hotelUserId)
+            .child("notifications")
+
+        notificationsRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val notificationId = snapshot.key ?: return
+                if (seenNotificationIds.contains(notificationId)) return
+                seenNotificationIds.add(notificationId)
+
+                val title = snapshot.child("title").getValue(String::class.java) ?: "Update"
+                val message = snapshot.child("message").getValue(String::class.java) ?: return
+
+                showPaymentNotification(title, message)
+                snapshot.ref.removeValue()
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun showPaymentNotification(title: String, message: String) {
+        val channelId = "admin_payment_updates"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Admin Payment Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Payment confirmations"
+            }
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.baseline_notifications_24)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        manager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }

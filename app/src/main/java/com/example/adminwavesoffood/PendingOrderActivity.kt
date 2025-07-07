@@ -50,6 +50,7 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
                     val order = snap.getValue(OrderDetails::class.java)
                     if (order != null) {
                         orderList.add(order)
+                        // 🔕 Do NOT trigger notifications here
                     }
                 }
                 setupAdapter()
@@ -105,10 +106,8 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
             Toast.makeText(this, "Order Dispatched", Toast.LENGTH_SHORT).show()
 
-            // ✅ Show local admin-side notification
             showLocalDispatchNotification(order)
 
-            // ✅ Send notification to user in Firebase
             sendNotificationWithHotelName(
                 userId = order.userId ?: return@addOnSuccessListener,
                 hotelUserId = hotelUserId,
@@ -126,33 +125,48 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
         title: String,
         status: String
     ) {
-        val nameRef = database.reference
+        val hotelRef = database.reference
             .child("Hotel Users").child(hotelUserId).child("nameOfResturant")
 
-        nameRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val hotelName = snapshot.getValue(String::class.java) ?: "your hotel"
-                val message = "Your order has been $status by $hotelName"
-                val timestamp = System.currentTimeMillis().toString()
+        hotelRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(hotelSnapshot: DataSnapshot) {
+                val hotelName = hotelSnapshot.getValue(String::class.java) ?: "your hotel"
 
-                val notifyMap = mapOf(
-                    "title" to title,
-                    "message" to message,
-                    "status" to status,
-                    "timestamp" to timestamp
-                )
+                val customerRef = database.reference
+                    .child("Users").child(userId).child("userName")
 
-                database.reference
-                    .child("Users").child(userId)
-                    .child("notifications").child(timestamp)
-                    .setValue(notifyMap)
+                customerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(customerSnapshot: DataSnapshot) {
+                        val customerName = customerSnapshot.getValue(String::class.java) ?: "a customer"
+                        val message = when (status) {
+                            "placed" -> "New order received from $customerName"
+                            "accepted" -> "Your order has been accepted by $hotelName"
+                            "dispatched" -> "Your order has been dispatched by $hotelName"
+                            else -> "Order update from $hotelName"
+                        }
+
+                        val timestamp = System.currentTimeMillis().toString()
+                        val notifyMap = mapOf(
+                            "title" to title,
+                            "message" to message,
+                            "status" to status,
+                            "timestamp" to timestamp
+                        )
+
+                        database.reference
+                            .child("Users").child(userId)
+                            .child("notifications").child(timestamp)
+                            .setValue(notifyMap)
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {}
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {}
         })
     }
 
-    // 🔔 Show instant local notification to admin
     private fun showLocalDispatchNotification(order: OrderDetails) {
         val channelId = "dispatch_channel"
         val channelName = "Dispatch Notifications"
@@ -179,7 +193,7 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
 
         val userName = order.userNames ?: "Customer"
         val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.baseline_notifications_24) // ✅ Update this icon as needed
+            .setSmallIcon(R.drawable.baseline_notifications_24)
             .setContentTitle("Order Completed")
             .setContentText("Order from $userName has been completed.")
             .setAutoCancel(true)

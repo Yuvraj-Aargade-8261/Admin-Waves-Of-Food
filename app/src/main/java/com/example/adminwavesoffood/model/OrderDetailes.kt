@@ -16,4 +16,6 @@ class OrderDetails : Serializable {
     var paymentReceived: Boolean = false
     var itemPushkey: String? = null
     var currentTime: Long = 0
+    var notified: Boolean? = false
+
 }

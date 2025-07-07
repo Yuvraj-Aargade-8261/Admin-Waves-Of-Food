@@ -39,21 +39,15 @@ class PendingOrderAdapter(
         fun bind(position: Int) {
             val order = orderList[position]
 
-            // ✅ Set customer name
             binding.customernamepending2.text = order.userNames ?: "Unnamed"
-
-            // ✅ Display total quantity (sum of all items)
             binding.pendingorderquantity.text = order.foodQuantities?.sum()?.toString() ?: "0"
 
-            // ✅ Load image with Glide
             Glide.with(context)
                 .load(Uri.parse(order.foodImages?.firstOrNull()))
                 .into(binding.orderfooditemimage)
 
-            // ✅ Update button text based on orderAccepted flag
             binding.acceptbutton.text = if (order.orderAccepted == true) "Dispatch" else "Accept"
 
-            // ✅ Accept/Dispatch button logic
             binding.acceptbutton.setOnClickListener {
                 val pos = adapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
@@ -67,7 +61,6 @@ class PendingOrderAdapter(
                 }
             }
 
-            // ✅ Whole card click opens order details
             itemView.setOnClickListener {
                 val pos = adapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
