@@ -139,7 +139,6 @@ class PendingOrderActivity : AppCompatActivity(), PendingOrderAdapter.OnItemClic
                     override fun onDataChange(customerSnapshot: DataSnapshot) {
                         val customerName = customerSnapshot.getValue(String::class.java) ?: "a customer"
                         val message = when (status) {
-                            "placed" -> "New order received from $customerName"
                             "accepted" -> "Your order has been accepted by $hotelName"
                             "dispatched" -> "Your order has been dispatched by $hotelName"
                             else -> "Order update from $hotelName"
