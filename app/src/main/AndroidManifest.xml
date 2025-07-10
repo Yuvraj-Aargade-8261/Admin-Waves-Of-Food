@@ -23,13 +23,6 @@
         <activity
             android:name=".ChooseLocationActivityAdmin"
             android:exported="false" />
-
-        <!-- 🚫 Remove this if it's not a real activity file -->
-        <!-- <activity
-            android:name=".activity_choose_location_admin"
-            android:exported="false" /> -->
-
-        <!-- ✅ Notification Receiver -->
         <receiver
             android:name=".OrderNotificationReceiver"
             android:exported="true" />

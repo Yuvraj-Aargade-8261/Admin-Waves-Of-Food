@@ -7,16 +7,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
-import android.location.LocationManager
 import android.os.Bundle
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
-import android.widget.Button
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -41,6 +36,7 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
     private lateinit var listOfLocationView: AutoCompleteTextView
     private lateinit var getCurrentLocationBtn: Button
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
+    private lateinit var gpsSettingsLauncher: ActivityResultLauncher<Intent>
 
     private val client = OkHttpClient()
     private lateinit var progressDialog: ProgressDialog
@@ -83,11 +79,19 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
             .setAlwaysShow(true)
             .build()
 
+        // ✅ Permission launcher
         permissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) checkIfGPSEnabled()
             else Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show()
+        }
+
+        // ✅ Settings launcher
+        gpsSettingsLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            checkIfGPSEnabled() // Refresh when user comes back
         }
 
         listOfLocationView.setOnItemClickListener { parent, _, position, _ ->
@@ -106,19 +110,6 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
         getCurrentLocationBtn.setOnClickListener { askLocationPermission() }
     }
 
-    private fun geocodeAndSave(address: String) {
-        try {
-            val geocoder = Geocoder(this, Locale.getDefault())
-            val results = geocoder.getFromLocationName(address, 1)
-            if (!results.isNullOrEmpty()) {
-                val loc = results[0]
-                saveLocationToFirebase(address, loc.latitude, loc.longitude)
-            } else showToastSafe("Unable to geocode address")
-        } catch (e: Exception) {
-            showToastSafe("Error geocoding address")
-        }
-    }
-
     private fun askLocationPermission() {
         permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
@@ -133,14 +124,23 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Enable Location")
             .setMessage("Please enable GPS and High Accuracy Mode.")
-            .setPositiveButton("Turn On") { _, _ -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+            .setPositiveButton("Turn On") { _, _ ->
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                gpsSettingsLauncher.launch(intent)
+            }
             .setNegativeButton("No Thanks", null)
-            .setNeutralButton("Skip") { _, _ -> finish() }
+            .setNeutralButton("Skip") { _, _ ->
+                sharedPreferences.edit().putBoolean("isLocationSet", true).apply()
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
             .show()
     }
 
+
     private fun getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) return
 
         progressDialog.setMessage("Getting your current location...")
         progressDialog.show()
@@ -180,10 +180,13 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
                     progressDialog.dismiss()
                     showToastSafe("Failed to fetch suggestions")
                 }
+
                 override fun onResponse(call: Call, response: Response) {
                     val suggestions = mutableListOf<String>()
                     JSONArray(response.body?.string() ?: "[]").let { arr ->
-                        for (i in 0 until arr.length()) suggestions.add(arr.getJSONObject(i).getString("display_name"))
+                        for (i in 0 until arr.length()) {
+                            suggestions.add(arr.getJSONObject(i).getString("display_name"))
+                        }
                     }
                     runOnUiThread {
                         progressDialog.dismiss()
@@ -193,6 +196,19 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
                     }
                 }
             })
+    }
+
+    private fun geocodeAndSave(address: String) {
+        try {
+            val geocoder = Geocoder(this, Locale.getDefault())
+            val results = geocoder.getFromLocationName(address, 1)
+            if (!results.isNullOrEmpty()) {
+                val loc = results[0]
+                saveLocationToFirebase(address, loc.latitude, loc.longitude)
+            } else showToastSafe("Unable to geocode address")
+        } catch (e: Exception) {
+            showToastSafe("Error geocoding address")
+        }
     }
 
     private fun saveLocationToFirebase(address: String, lat: Double, lng: Double) {
@@ -221,6 +237,8 @@ class ChooseLocationActivityAdmin : AppCompatActivity() {
     }
 
     private fun showToastSafe(message: String) {
-        if (!isFinishing && !isDestroyed) Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        if (!isFinishing && !isDestroyed) {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
     }
 }

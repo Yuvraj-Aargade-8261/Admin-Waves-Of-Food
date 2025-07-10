@@ -72,14 +72,19 @@ class AdminProfile : AppCompatActivity() {
                     binding.email.setText(snapshot.child("email").getValue(String::class.java))
                     binding.password.setText(snapshot.child("password").getValue(String::class.java))
                     binding.phonenumber.setText(snapshot.child("phone").getValue(String::class.java))
-                    // Address is now stored as map: address/address
-                    binding.address.setText(
-                        snapshot.child("address").child("address").getValue(String::class.java)
-                    )
+
+                    val addressNode = snapshot.child("address")
+                    if (addressNode.hasChild("address")) {
+                        binding.address.setText(addressNode.child("address").getValue(String::class.java))
+                    } else {
+                        binding.address.setText(addressNode.getValue(String::class.java))
+                    }
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@AdminProfile, "Failed to fetch profile", Toast.LENGTH_SHORT).show()
+            }
         })
     }
 
@@ -87,13 +92,11 @@ class AdminProfile : AppCompatActivity() {
         val uid = auth.currentUser?.uid ?: return
         val userRef = adminReference.child(uid)
 
-        // Only updating the address string under the address map
         val updatedData = mapOf<String, Any>(
             "name" to binding.name.text.toString(),
             "email" to binding.email.text.toString(),
             "password" to binding.password.text.toString(),
             "phone" to binding.phonenumber.text.toString(),
-            // update nested child address/address
             "address/address" to binding.address.text.toString()
         )
 

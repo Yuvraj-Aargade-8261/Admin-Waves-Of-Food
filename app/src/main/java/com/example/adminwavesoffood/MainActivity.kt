@@ -25,8 +25,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var completedOrderReference: DatabaseReference
     private lateinit var pendingOrderReference: DatabaseReference
     private lateinit var hotelUserId: String
-    private var seenOrderIds = mutableSetOf<String>()
-    private var seenNotificationIds = mutableSetOf<String>() // ✅ For payment notification tracking
+    private var seenNotificationIds = mutableSetOf<String>() // For payment notification tracking
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
         fetchDashboardData()
         listenForNewOrders()
-        listenForPaymentNotifications() // ✅ Moved here
+        listenForPaymentNotifications()
     }
 
     private fun setupNavigation() {
@@ -130,12 +129,18 @@ class MainActivity : AppCompatActivity() {
         pendingOrderReference.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val orderId = snapshot.key ?: return
-                if (seenOrderIds.contains(orderId)) return
 
-                seenOrderIds.add(orderId)
+                val alreadySent = snapshot.child("notificationSent").getValue(Boolean::class.java) ?: false
+                if (alreadySent) return
+
                 val userName = snapshot.child("userNames").getValue(String::class.java) ?: "Customer"
 
+                // 🔔 Trigger notification
                 triggerLocalNotification(userName)
+
+                // ✅ Mark as sent in Firebase
+                snapshot.ref.child("notificationSent").setValue(true)
+
                 refreshDashboardImmediately()
             }
 
@@ -159,7 +164,6 @@ class MainActivity : AppCompatActivity() {
         sendBroadcast(intent)
     }
 
-    // ✅ PAYMENT NOTIFICATION LISTENER
     private fun listenForPaymentNotifications() {
         val notificationsRef = database.reference
             .child("Hotel Users")
