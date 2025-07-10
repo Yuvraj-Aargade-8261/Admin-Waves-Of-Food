@@ -88,14 +88,14 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun updateUi(user: FirebaseUser?) {
-        startActivity(Intent(this, MainActivity::class.java))
+        startActivity(Intent(this, ChooseLocationActivityAdmin::class.java))
         finish()
     }
 
     override fun onStart() {
         super.onStart()
         auth.currentUser?.let {
-            startActivity(Intent(this, MainActivity::class.java))
+            startActivity(Intent(this, ChooseLocationActivityAdmin::class.java))
             finish()
         }
     }

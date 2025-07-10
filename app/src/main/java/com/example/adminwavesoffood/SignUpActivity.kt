@@ -68,7 +68,7 @@ class SignUpActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 Toast.makeText(this, "Account Created", Toast.LENGTH_SHORT).show()
                 saveUserData(userName, restaurant, email, password)
-                startActivity(Intent(this, LoginActivity::class.java))
+                startActivity(Intent(this, ChooseLocationActivityAdmin::class.java))
                 finish()
             } else {
                 Toast.makeText(this, "Account Creation Failed", Toast.LENGTH_SHORT).show()

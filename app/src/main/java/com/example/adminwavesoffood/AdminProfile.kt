@@ -68,11 +68,14 @@ class AdminProfile : AppCompatActivity() {
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    binding.name.setText(snapshot.child("name").value.toString())
-                    binding.email.setText(snapshot.child("email").value.toString())
-                    binding.password.setText(snapshot.child("password").value.toString())
-                    binding.phonenumber.setText(snapshot.child("phone").value.toString())
-                    binding.address.setText(snapshot.child("address").value.toString())
+                    binding.name.setText(snapshot.child("name").getValue(String::class.java))
+                    binding.email.setText(snapshot.child("email").getValue(String::class.java))
+                    binding.password.setText(snapshot.child("password").getValue(String::class.java))
+                    binding.phonenumber.setText(snapshot.child("phone").getValue(String::class.java))
+                    // Address is now stored as map: address/address
+                    binding.address.setText(
+                        snapshot.child("address").child("address").getValue(String::class.java)
+                    )
                 }
             }
 
@@ -82,19 +85,22 @@ class AdminProfile : AppCompatActivity() {
 
     private fun updateUserData() {
         val uid = auth.currentUser?.uid ?: return
+        val userRef = adminReference.child(uid)
 
-        val updatedData = mapOf(
+        // Only updating the address string under the address map
+        val updatedData = mapOf<String, Any>(
             "name" to binding.name.text.toString(),
             "email" to binding.email.text.toString(),
             "password" to binding.password.text.toString(),
             "phone" to binding.phonenumber.text.toString(),
-            "address" to binding.address.text.toString()
+            // update nested child address/address
+            "address/address" to binding.address.text.toString()
         )
 
-        adminReference.child(uid).updateChildren(updatedData).addOnSuccessListener {
+        userRef.updateChildren(updatedData).addOnSuccessListener {
             Toast.makeText(this, "Profile Updated Successfully", Toast.LENGTH_SHORT).show()
-            auth.currentUser?.updateEmail(updatedData["email"]!!)
-            auth.currentUser?.updatePassword(updatedData["password"]!!)
+            auth.currentUser?.updateEmail(binding.email.text.toString())
+            auth.currentUser?.updatePassword(binding.password.text.toString())
         }.addOnFailureListener {
             Toast.makeText(this, "Updatation Failed", Toast.LENGTH_SHORT).show()
         }
