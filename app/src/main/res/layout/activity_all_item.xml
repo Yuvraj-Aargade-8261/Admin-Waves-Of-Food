@@ -12,11 +12,11 @@
         android:id="@+id/allitemtextview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
-        android:fontFamily="@font/yeonsung_regular"
-        android:text="All Item"
+        android:layout_marginTop="60dp"
+        android:fontFamily="@font/lato_bold"
+        android:text="All Items"
         android:textColor="@color/black"
-        android:textSize="40sp"
+        android:textSize="24sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -25,11 +25,11 @@
         android:id="@+id/menurecyclerview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        tools:listitem="@layout/allitememnu"
+        android:layout_marginTop="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/allitemtextview" />
+        app:layout_constraintTop_toBottomOf="@+id/allitemtextview"
+        tools:listitem="@layout/allitememnu" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
